@@ -175,3 +175,208 @@ protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws S
 3. 额外优化：检查文件夹是否存在、处理空文件名、避免文件覆盖，且不要上传到 `resources` 源码目录。
 
 按这个代码修改后，就能正常上传文件到指定文件夹里的具体文件了。如果还报错，大概率是文件夹权限问题（比如没有写入权限），可以告诉我，我再帮你解决~
+
+
+## filterChain.doFilter
+
+### 一、核心需求理解
+你想深入了解 `filterChain.doFilter()` 这个方法的作用、使用场景和工作原理，我会从基础概念到实际应用，用通俗易懂的方式帮你把这个知识点讲透，结合你熟悉的Servlet登录场景来举例，让你更容易理解。
+
+### 二、`filterChain.doFilter()` 完整科普
+#### 1. 先搞懂：Filter（过滤器）是什么？
+在Servlet体系中，Filter是**拦截请求/响应的中间件**，可以在请求到达Servlet之前、响应返回浏览器之前做统一处理（比如登录校验、编码统一、日志记录）。
+你可以把Filter理解成：用户（浏览器）去访问Servlet（公司办公室），必须先经过Filter（公司门卫），门卫可以决定“放行”“拒绝”或“先处理再放行”。
+
+#### 2. `FilterChain`（过滤器链）是什么？
+一个Web应用中可以配置**多个Filter**（比如一个做登录校验、一个做编码处理、一个做日志记录），这些Filter会按配置顺序组成一个“链条”，这就是 `FilterChain`（过滤器链）。
+
+#### 3. `filterChain.doFilter()` 核心作用
+`filterChain.doFilter(request, response)` 是过滤器链的**核心放行方法**，作用是：
+- 把当前请求/响应传递给**过滤器链中的下一个Filter**；
+- 如果当前Filter是链条最后一个，则传递给**目标Servlet**（比如你的LoginServlet）。
+
+简单说：`doFilter()` 就是“放行”按钮，调用它，请求才会继续往下走；不调用，请求就会被拦截在当前Filter。
+
+#### 4. 工作流程（结合你的登录场景举例）
+假设你配置了两个Filter：`LoginFilter`（登录校验） + `EncodingFilter`（编码统一），再加上目标`LoginServlet`，完整流程如下：
+```mermaid
+graph TD
+    A[浏览器发送请求 /login] --> B[EncodingFilter]
+    B --> C{是否调用doFilter?}
+    C -- 是 --> D[LoginFilter]
+    C -- 否 --> E[直接返回响应（拦截）]
+    D --> F{是否调用doFilter?}
+    F -- 是 --> G[LoginServlet]
+    F -- 否 --> H[直接返回响应（比如未登录提示）]
+    G --> I[处理请求（doGet/doPost）]
+    I --> J[返回响应]
+    J --> D[LoginFilter（响应阶段处理）]
+    D --> B[EncodingFilter（响应阶段处理）]
+    B --> K[浏览器接收响应]
+```
+
+##### 代码示例（最易理解的LoginFilter）
+结合你之前的登录场景，写一个实用的`LoginFilter`，你能直观看到`doFilter()`的用法：
+```java
+package org.example.filter;
+
+import jakarta.servlet.*;
+import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.example.entity.Users;
+
+import java.io.IOException;
+
+// 拦截所有请求（/*），也可以指定拦截特定路径（/time）
+@WebFilter("/*")
+public class LoginFilter implements Filter {
+
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        // 强转为HttpServletRequest，方便获取Session、路径等
+        HttpServletRequest req = (HttpServletRequest) servletRequest;
+        HttpServletResponse resp = (HttpServletResponse) servletResponse;
+
+        // 1. 排除不需要拦截的路径（比如登录页、静态资源）
+        String url = req.getRequestURI();
+        if (url.contains("/login")) {
+            // 访问登录页，直接放行，调用doFilter让请求到LoginServlet
+            filterChain.doFilter(req, resp);
+            return; // 放行后终止当前Filter逻辑
+        }
+
+        // 2. 校验Session中的用户是否登录
+        HttpSession session = req.getSession();
+        Users user = (Users) session.getAttribute("user");
+        if (user != null) {
+            // 已登录，放行到目标资源（比如/time）
+            filterChain.doFilter(req, resp);
+        } else {
+            // 未登录，拦截并跳转到登录页（不调用doFilter）
+            resp.sendRedirect("login");
+        }
+    }
+}
+```
+
+#### 5. 关键细节（新手必看）
+##### （1）`doFilter()` 的两个参数
+`filterChain.doFilter(ServletRequest request, ServletResponse response)` 的参数：
+- 可以直接传递原始的`request/response`；
+- 也可以传递**包装后的请求/响应**（比如自定义`HttpServletRequestWrapper`，实现参数修改、请求体读取等）。
+
+##### （2）不调用`doFilter()` = 拦截请求
+如果在Filter中不调用`filterChain.doFilter()`，请求就会被“卡住”，不会到达后续Filter或Servlet。
+✅ 典型场景：未登录时，直接`resp.sendRedirect("login")`，不调用`doFilter()`，拦截请求。
+
+##### （3）Filter的执行顺序
+- 注解方式（`@WebFilter`）：按Filter类名的字母顺序执行（比如`ALoginFilter`先于`BEncodingFilter`）；
+- XML配置方式（`web.xml`）：按`<filter-mapping>`的顺序执行（更灵活）。
+
+##### （4）响应阶段也会执行Filter
+Filter不仅在“请求到达Servlet前”执行，在“Servlet返回响应后”也会执行（`doFilter()`之后的代码）：
+```java
+@Override
+public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws IOException, ServletException {
+    // 1. 请求阶段：在放行前执行（比如记录请求开始时间）
+    long start = System.currentTimeMillis();
+    
+    // 放行到下一个Filter/Servlet
+    chain.doFilter(req, resp);
+    
+    // 2. 响应阶段：在Servlet返回响应后执行（比如记录请求耗时）
+    long end = System.currentTimeMillis();
+    System.out.println("请求耗时：" + (end - start) + "ms");
+}
+```
+
+### 三、总结
+1. `filterChain.doFilter()` 是Filter的核心放行方法，调用它请求才会传递到下一个Filter/Servlet，不调用则拦截请求；
+2. Filter是Servlet的前置/后置处理器，常用于登录校验、编码统一、日志记录等统一逻辑；
+3. 结合你的登录场景：可以用Filter拦截`/time`等需要登录的路径，未登录时不调用`doFilter()`，直接跳登录页，比在Servlet中写校验逻辑更优雅（统一管理）。
+
+简单记：`doFilter()` = 放行，不调 = 拦截，这是Filter最核心的用法。
+
+
+## 浏览器在何时会请求 js/css/图片等资源
+
+### 一、核心需求理解
+你想知道浏览器具体在什么时候请求JS、CSS、PNG这类静态资源，以及你的Filter代码中排除这些静态资源的判断逻辑是否真的有必要（也就是浏览器是否真的会单独请求这些资源）。
+
+### 二、详细解答
+#### 1. 浏览器请求静态资源的时机（核心问题）
+浏览器**一定会单独请求JS/CSS/PNG等静态资源**，请求时机分两步：
+##### 步骤1：先请求HTML页面（触发你的Filter拦截）
+当你访问`http://localhost:8080/项目名/index.html`（或转发到`/`的首页）时，浏览器会先发送**GET请求**获取HTML页面的内容（这一步会被你的`@WebFilter("/*")`拦截）。
+
+##### 步骤2：解析HTML时，自动发起静态资源请求
+浏览器拿到HTML内容后，会逐行解析标签，遇到`<script>`、`<link>`、`<img>`等引用静态资源的标签时，**立刻发起新的GET请求**获取对应资源：
+```html
+<!-- 解析到这行，浏览器会发 GET /js/index.js 请求 -->
+<script src="/js/index.js"></script>
+
+<!-- 解析到这行，浏览器会发 GET /css/style.css 请求 -->
+<link rel="stylesheet" href="/css/style.css">
+
+<!-- 解析到这行，浏览器会发 GET /img/logo.png 请求 -->
+<img src="/img/logo.png" alt="logo">
+```
+
+举个直观的例子：
+你打开浏览器F12的`Network`标签，访问首页后会看到：
+- 第1个请求：`GET /`（获取HTML）
+- 第2个请求：`GET /js/index.js`（获取JS）
+- 第3个请求：`GET /css/style.css`（获取CSS）
+- 第4个请求：`GET /img/logo.png`（获取图片）
+
+这些静态资源请求**都会被你的`@WebFilter("/*")`拦截**——如果你的Filter不排除这些请求，就会触发登录校验，导致静态资源加载失败（因为静态资源请求的Session中没有`user`，会被重定向到login页）。
+
+#### 2. 你的Filter代码为什么要排除静态资源？（关键逻辑）
+你的代码中`if(!url.endsWith(".js") && !url.endsWith(".css") && !url.endsWith(".png"))`这行判断**非常必要**，不排除会出大问题：
+##### 问题场景（不排除静态资源的后果）：
+1. 浏览器请求`/js/index.js` → 被Filter拦截；
+2. Filter检查Session：`user == null`（静态资源请求不会带登录态），且URL不是`login` → 执行`res.sendRedirect("login")`；
+3. 浏览器本想加载JS文件，却收到重定向响应，最终拿到的是login页面的HTML，而非JS代码；
+4. 页面表现：HTML能显示，但JS/CSS/图片加载失败 → 页面样式错乱、交互功能失效。
+
+##### 你的代码逻辑验证（正确且实用）：
+```java
+// 只有【不是静态资源】的请求，才做登录校验
+if(!url.endsWith(".js") && !url.endsWith(".css") && !url.endsWith(".png")){
+    // 登录校验逻辑：未登录且不是访问login页 → 重定向到login
+}
+// 静态资源请求直接放行（执行chain.doFilter）
+```
+
+#### 3. 补充：静态资源请求的细节（新手易忽略）
+##### （1）静态资源请求的特征
+- 都是**GET请求**（浏览器获取静态资源默认用GET）；
+- 请求URL以静态资源后缀结尾（.js/.css/.png/.jpg/.ico等）；
+- 这类请求不需要登录态，必须放行，否则页面会“裸奔”（无样式、无交互）。
+
+##### （2）你的代码可以优化的点
+当前判断只排除了`.js/.css/.png`，实际开发中建议补充更多静态资源后缀，避免遗漏：
+```java
+// 优化：用集合存储所有静态资源后缀，更易维护
+Set<String> staticSuffix = new HashSet<>(Arrays.asList(".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".html", ".htm"));
+// 获取请求URL的后缀
+String suffix = url.substring(url.lastIndexOf("."));
+// 判断是否为静态资源
+if(!staticSuffix.contains(suffix)){
+    // 登录校验逻辑...
+}
+```
+
+##### （3）如何验证静态资源请求被拦截？
+打开浏览器F12 → `Network`标签 → 刷新页面：
+- 如果JS/CSS的请求状态是`302`（重定向），且响应内容是login页面 → 说明Filter拦截了静态资源（你的排除逻辑没生效）；
+- 如果JS/CSS的请求状态是`200` → 说明排除逻辑生效，静态资源正常加载。
+
+### 三、总结
+1. 浏览器请求静态资源的时机：先请求HTML页面，解析HTML时会自动发起独立的GET请求获取JS/CSS/PNG等静态资源；
+2. 你的Filter必须排除静态资源：否则这些请求会被登录校验拦截，导致页面样式/交互失效；
+3. 核心逻辑：`@WebFilter("/*")`会拦截所有请求，通过后缀判断排除静态资源，只对业务请求做登录校验。
+
+简单说：浏览器确实会单独请求JS/CSS等资源，你的排除逻辑是必要的，否则页面会加载失败。
