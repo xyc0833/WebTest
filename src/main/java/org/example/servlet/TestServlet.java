@@ -1,8 +1,7 @@
-package org.example.webtest;
+package org.example.servlet;
 
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.java.Log;
@@ -10,7 +9,7 @@ import lombok.extern.java.Log;
 import java.io.IOException;
 import java.util.Enumeration;
 @Log
-@WebServlet("/test")
+@WebServlet(value = "/test",loadOnStartup = 1)
 public class TestServlet implements Servlet {
 
     //HttpServlet;

@@ -1,4 +1,4 @@
-package org.example.webtest;
+package org.example.servlet;
 
 import java.io.*;
 

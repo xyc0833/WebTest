@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <script src="test02.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录到系统</title>
+  <style>
+    .illegal-pwd{
+      border: red 1px solid !important;
+      box-shadow: 0 0 5px red;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .login-container {
+      background: #ffffff;
+      padding: 40px 30px;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 32px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      color: #4a5568;
+      margin-bottom: 8px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      margin-top: 12px;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+<div class="login-container">
+  <h1 class="login-title">登录到系统</h1>
+  <form method="post" action="login">
+    <div class="form-group">
+      <label for="username">用户名</label>
+      <input type="text" id="username" placeholder="请输入用户名" name="username">
+    </div>
+    <div class="form-group">
+      <label for="password">密码</label>
+      <input type="password" id="password" placeholder="请输入密码" oninput="checkIllegal(this)" name="password">
+    </div>
+    <label>
+      <input type="checkbox" placeholder="记住我" name="remember-me">
+      记住我
+    </label>
+    <button type="submit" class="login-btn" >登录</button>
+<!--    学习文件下载-->
+<!--    <hr>-->
+<!--    <a href="file" download="icon.png">点我下载高清资源</a>-->
+  </form>
+
+<!--  <button type="submit" class="login-btn" onclick="http()">登录</button>-->
+</div>
+
+<!--学习文件上床-->
+<!--<div class="login-container">-->
+<!--  <form method="post" action="file" enctype="multipart/form-data">-->
+<!--    <div>-->
+<!--      <input type="file" name="test-file">-->
+<!--    </div>-->
+<!--    <div>-->
+<!--      <button>上传文件</button>-->
+<!--    </div>-->
+<!--  </form>-->
+<!--</div>-->
+<!--学习xhr请求数据-->
+<!--<div class="login-container">-->
+<!--  <div id="time"></div>-->
+<!--  <br>-->
+<!--  <button onclick="updateTime()">更新数据</button>-->
+<!--</div>-->
+
+
+</body>
+</html>

@@ -3,12 +3,9 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
          version="5.0">
-<!--    <servlet>-->
-<!--        <servlet-name>test</servlet-name>-->
-<!--        <servlet-class>org.example.webtest.TestServlet</servlet-class>-->
-<!--    </servlet>-->
-<!--    <servlet-mapping>-->
-<!--        <servlet-name>test</servlet-name>-->
-<!--        <url-pattern>/test</url-pattern>-->
-<!--    </servlet-mapping>-->
+<!--    Session并不是永远都存在的，它有着自己的过期时间，默认时间为30分钟，
+若超过此时间，Session将丢失，我们可以在配置文件中修改过期时间-->
+    <session-config>
+        <session-timeout>1</session-timeout>
+    </session-config>
 </web-app>
